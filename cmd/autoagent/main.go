@@ -1,3 +1,4 @@
+// cmd/autoagent/main.go
 package main
 
 import (
@@ -28,6 +29,10 @@ func main() {
 		repoPath = os.Args[2]
 	}
 
+	if err := analysis.EnsureRepoExists(repoPath); err != nil {
+		log.Fatalf("Repository setup failed: %v", err)
+	}
+
 	ctx := githubclient.NewContext()
 	client := githubclient.NewClient(ctx)
 
@@ -35,7 +40,15 @@ func main() {
 	fmt.Println("Issue Title:", title)
 	fmt.Println("Issue Body:", body)
 
-	matches, err := analysis.FindRelevantFiles(title+" "+body, repoPath)
+	// 🔁 Use LLM to extract keywords from issue
+	keywords, err := llmclient.ExtractKeywords(title + "\n" + body)
+	if err != nil {
+		log.Fatalf("Keyword extraction failed: %v", err)
+	}
+	fmt.Println("\n🔍 LLM-Extracted Keywords:")
+	fmt.Println(keywords)
+
+	matches, err := analysis.FindRelevantFilesByKeywords(keywords, repoPath)
 	if err != nil {
 		log.Fatalf("Error searching files: %v", err)
 	}
